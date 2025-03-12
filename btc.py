@@ -50,7 +50,9 @@ def generate_wallet():
     public_key = private_key_to_public_key(private_key)
     mnemonic_phrase = private_key_to_mnemonic(private_key)
     legacy_address, segwit_address = public_key_to_addresses(public_key)
-
+    print("\n\nBitcoin Generator & Balance checker\n\n")
+    
+    print(Fore.YELLOW + "Made by Cr0mb\n\n")
     print(Fore.CYAN + "Mnemonic Phrase: ", Style.BRIGHT + mnemonic_phrase)
     print(Fore.GREEN + "Private Key (Hex): ", Style.BRIGHT + private_key.hex())
     print(Fore.YELLOW + "Public Key (Hex): ", Style.BRIGHT + public_key.hex())

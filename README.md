@@ -1,26 +1,30 @@
-![image](https://github.com/user-attachments/assets/334f629a-88be-4780-9b12-7d230336ed10)
+![image](https://github.com/user-attachments/assets/83fbf13e-6b4d-4248-a83d-6ffbc68847aa)
 
 
 # Bitcoin-Address-Generator---BTC-Crumble-Gen
-BTC Crumble Gen is a Bitcoin address generator tool that creates a Bitcoin wallet using a randomly generated mnemonic phrase. The tool allows you to view detailed wallet information including balance, transaction history, unspent outputs (UTXOs), and other wallet metadata by fetching data from multiple APIs.
-
-This script continuously generates Bitcoin wallets and retrieves real-time information about each wallet from various public Bitcoin blockchain APIs.
+This Python script generates Bitcoin wallets, displays relevant wallet information, and checks the balance for both Legacy and SegWit addresses using multiple public APIs.
 
 ## Features
-- Generate Bitcoin Wallets: Create Bitcoin wallets with 12 or 24-word mnemonics.
-- Fetch Bitcoin Data: Retrieve wallet balance, transaction history, and unspent transaction outputs (UTXOs).
-- Multiple APIs Supported: Fetch wallet data from Blockstream, Blockchain, and BlockCypher APIs.
-- Display Information: View detailed information about the generated Bitcoin wallet in a well-formatted terminal output.
-- Real-Time Information: View real-time Bitcoin wallet data such as balance and transaction history.
+- Generates a random Bitcoin private key and corresponding public key.
+- Derives Bitcoin Legacy (P2PKH) and SegWit (P2WPKH/P2SH) addresses from the public key.
+- Displays the mnemonic phrase for wallet recovery.
+- Fetches and displays transaction history and unspent transactions from multiple public APIs.
+- Includes a delay to handle rate limits and API blacklisting (waits for 20 minutes if blacklisted).
 
-
-## Installation
-Python 3.6+ is required.
-Install the required libraries
+## Prerequisites
+- Python 3.7 or higher
 ```
-pip install mnemonic bitcoinlib requests pyfiglet colorama
+pip install ecdsa hashlib base58 mnemonic bech32 requests colorama
 ```
 
-> Wallet Generation: The script will continuously generate Bitcoin wallets using randomly chosen 12 or 24-word mnemonic phrases.
-> Data Fetching: For each generated wallet, the script will fetch data (balance, transactions, and UTXOs) from three different public Bitcoin blockchain APIs: Blockstream, Blockchain, and BlockCypher.
-> Display Information: After retrieving the data, the wallet information will be displayed in a clear, colored format in your terminal.
+The script will start generating wallets continuously and display the following information:
+
+> Mnemonic Phrase (for wallet recovery)
+
+> Private Key (in hexadecimal format)
+
+> Public Key (in hexadecimal format)
+
+> Legacy Address (P2PKH)
+
+> SegWit Address (P2WPKH/P2SH)

@@ -45,6 +45,7 @@ def display_wallet_info(wallet_type, address, info):
     print(Fore.CYAN + f"\n{wallet_type} Address Info:")
     print(Fore.GREEN + f"TX History: {info.get('txs', [])}")
     print(Fore.RED + f"Unspent Transactions: {info.get('unspent', [])}")
+    print(Fore.YELLOW + f"Balance: {info.get('final_balance', 0) / 1e8} BTC")
 
 def save_wallet_to_file(wallet_info):
     if os.path.exists('wallets.json'):
@@ -62,7 +63,7 @@ def generate_wallet():
     public_key = private_key_to_public_key(private_key)
     mnemonic_phrase = private_key_to_mnemonic(private_key)
     legacy_address, segwit_address = public_key_to_addresses(public_key)
-    print("Bitcoin Generator & Balance checker\n")
+    print("\n\nBitcoin Generator & Balance checker\n\n")
     
     print(Fore.YELLOW + "Made by Cr0mb\n\n")
     print(Fore.CYAN + "Mnemonic Phrase: ", Style.BRIGHT + mnemonic_phrase)
@@ -76,11 +77,12 @@ def generate_wallet():
         if info:
             display_wallet_info(f"{addr_type} Address Info from {api_name.capitalize()} API", address, info)
             
-            if 'txs' in info and len(info['txs']) > 0:
+            if ('txs' in info and len(info['txs']) > 0) or info.get('final_balance', 0) > 0:
                 wallet_info = {
                     'address': address,
                     'type': addr_type,
-                    'transaction_history': info['txs']
+                    'transaction_history': info.get('txs', []),
+                    'balance': info.get('final_balance', 0) / 1e8
                 }
                 save_wallet_to_file(wallet_info)
                 

@@ -86,10 +86,13 @@ def generate_wallet():
     print(Fore.YELLOW + "Public Key (Hex): " + Style.BRIGHT + public_key.hex())
     print(Fore.MAGENTA + "Legacy Address (P2PKH): " + Style.BRIGHT + legacy_address)
     print(Fore.MAGENTA + "SegWit Address (P2WPKH): " + Style.BRIGHT + segwit_address)
-    
+
+    all_failed = True  # Assume all APIs will fail, change if one succeeds
+
     for address, addr_type in [(legacy_address, "Legacy"), (segwit_address, "SegWit")]:
         info, api_name = get_wallet_info(address)
         if info:
+            all_failed = False  # At least one API worked
             display_wallet_info(f"{addr_type} Address Info from {api_name.capitalize()} API", address, info)
             if ('txs' in info and len(info['txs']) > 0) or info.get('final_balance', 0) > 0:
                 wallet_info = {
@@ -100,7 +103,15 @@ def generate_wallet():
                 }
                 save_wallet_to_file(wallet_info)
         else:
-            log_event(f"Error fetching {addr_type} Address info from all APIs. Skipping...")
+            log_event(f"Error fetching {addr_type} Address info from all APIs.")
+
+    # If all API calls failed, pause for 20 minutes before continuing
+    if all_failed:
+        log_event("All APIs failed! Pausing for 20 minutes before retrying...")
+        time.sleep(1200)  # 20 minutes (1200 seconds)
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def run_continuously():
     try:
@@ -111,9 +122,6 @@ def run_continuously():
             time.sleep(1)
     except KeyboardInterrupt:
         log_event("Process interrupted. Exiting gracefully...")
-
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
 
 if __name__ == "__main__":
     run_continuously()

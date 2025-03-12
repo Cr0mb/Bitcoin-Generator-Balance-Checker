@@ -7,6 +7,7 @@ import bech32
 import requests
 from colorama import Fore, Style, init
 import time
+import json
 
 init(autoreset=True)
 
@@ -45,12 +46,23 @@ def display_wallet_info(wallet_type, address, info):
     print(Fore.GREEN + f"TX History: {info.get('txs', [])}")
     print(Fore.RED + f"Unspent Transactions: {info.get('unspent', [])}")
 
+def save_wallet_to_file(wallet_info):
+    if os.path.exists('wallets.json'):
+        with open('wallets.json', 'r') as file:
+            wallets_data = json.load(file)
+    else:
+        wallets_data = []
+
+    wallets_data.append(wallet_info)
+    with open('wallets.json', 'w') as file:
+        json.dump(wallets_data, file, indent=4)
+
 def generate_wallet():
     private_key = generate_private_key()
     public_key = private_key_to_public_key(private_key)
     mnemonic_phrase = private_key_to_mnemonic(private_key)
     legacy_address, segwit_address = public_key_to_addresses(public_key)
-    print("\n\nBitcoin Generator & Balance checker\n\n")
+    print("Bitcoin Generator & Balance checker\n")
     
     print(Fore.YELLOW + "Made by Cr0mb\n\n")
     print(Fore.CYAN + "Mnemonic Phrase: ", Style.BRIGHT + mnemonic_phrase)
@@ -63,10 +75,20 @@ def generate_wallet():
         info, api_name = get_wallet_info(address)
         if info:
             display_wallet_info(f"{addr_type} Address Info from {api_name.capitalize()} API", address, info)
+            
+            if 'txs' in info and len(info['txs']) > 0:
+                wallet_info = {
+                    'address': address,
+                    'type': addr_type,
+                    'transaction_history': info['txs']
+                }
+                save_wallet_to_file(wallet_info)
+                
         else:
             print(Fore.RED + f"\nError fetching {addr_type} Address info from all APIs, blacklisted.")
             print(Fore.YELLOW + "\nWaiting for 20 minutes before trying again...")
             time.sleep(1200)
+
 def run_continuously():
     while True:
         clear_screen()

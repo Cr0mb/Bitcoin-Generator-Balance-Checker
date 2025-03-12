@@ -1,7 +1,8 @@
 ![image](https://github.com/user-attachments/assets/83fbf13e-6b4d-4248-a83d-6ffbc68847aa)
 
 
-# Bitcoin-Address-Generator---BTC-Crumble-Gen
+# Bitcoin Generator & Balance Checker
+
 This Python script generates Bitcoin wallets, displays relevant wallet information, and checks the balance for both Legacy and SegWit addresses using multiple public APIs.
 
 ## Features

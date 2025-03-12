@@ -1,183 +1,79 @@
-import sys
-import random
-import time
 import os
+import ecdsa
+import hashlib
+import base58
 from mnemonic import Mnemonic
-from bitcoinlib.wallets import Wallet
-from bitcoinlib.keys import Key
+import bech32
 import requests
-import pyfiglet
-from colorama import Fore, Back, Style, init
+from colorama import Fore, Style, init
+import time
 
-# Initialize colorama
 init(autoreset=True)
 
-# API URLs
-BLOCKSTREAM_API_URL = "https://blockstream.info/api/address/"
-BLOCKCHAIN_API_URL = "https://blockchain.info/rawaddr/"
-BLOCKCYPHER_API_URL = "https://api.blockcypher.com/v1/btc/main/addrs/"
+API_URLS = {
+    "blockstream": "https://blockstream.info/api/address/",
+    "blockchain": "https://blockchain.info/rawaddr/",
+    "blockcypher": "https://api.blockcypher.com/v1/btc/main/addrs/"
+}
 
-# Function to generate Bitcoin address and wallet using mnemonic
-def generate_bitcoin_address(mnemonic_words):
-    wallet_name = f"Bitcoin_Wallet_{mnemonic_words[:4]}"
-    try:
-        wallet = Wallet.create(wallet_name, keys=mnemonic_words, network='bitcoin')
-    except Exception as e:
-        print(f"Wallet creation error (may already exist): {e}")
-        time.sleep(2)
-        wallet = Wallet(wallet_name)  # Open the existing wallet without error
-    key = wallet.get_key()
-    address = key.address
-    private_key = key.wif
-    public_key = key.public()
-    return address, private_key, public_key, key, wallet
+def generate_private_key():
+    return os.urandom(32)
 
-# Function to generate a mnemonic
-def generate_mnemonic(word_count):
-    mnemo = Mnemonic("english")
-    if word_count == 12:
-        return mnemo.generate(strength=128)
-    elif word_count == 24:
-        return mnemo.generate(strength=256)
-    else:
-        print("Invalid choice. Please choose either 12 or 24 words.")
-        sys.exit(1)
+def private_key_to_public_key(private_key):
+    sk = ecdsa.SigningKey.from_string(private_key, curve=ecdsa.SECP256k1)
+    return sk.get_verifying_key().to_string()
 
-# Function to fetch data from an API
-def fetch_from_api(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching data from {url}: {e}")
-        time.sleep(1)
-        return None
+def private_key_to_mnemonic(private_key):
+    seed = hashlib.sha256(private_key).digest()
+    return Mnemonic("english").to_mnemonic(seed)
 
-# Function to get Bitcoin balance
-def get_bitcoin_balance(address, api_type="blockstream"):
-    if api_type == "blockstream":
-        url = f"{BLOCKSTREAM_API_URL}{address}"
-        data = fetch_from_api(url)
-        if data:
-            balance = data['chain_stats']['funded_txo_sum'] - data['chain_stats']['spent_txo_sum']
-            return balance / 1e8  # Convert from satoshis to BTC
-    elif api_type == "blockchain":
-        url = f"{BLOCKCHAIN_API_URL}{address}"
-        data = fetch_from_api(url)
-        if data:
-            return data['final_balance'] / 1e8  # Convert from satoshis to BTC
-    elif api_type == "blockcypher":
-        url = f"{BLOCKCYPHER_API_URL}{address}/balance"
-        data = fetch_from_api(url)
-        if data:
-            return data.get('final_balance', 0) / 1e8
-    return 0
+def public_key_to_addresses(public_key):
+    ripemd160 = hashlib.new('ripemd160', hashlib.sha256(public_key).digest()).digest()
+    legacy_address = base58.b58encode_check(b'\x00' + ripemd160)
+    segwit_address = bech32.encode('bc', 0, ripemd160)
+    return legacy_address, segwit_address
 
-# Function to get transaction history
-def get_transaction_history(address, api_type="blockstream"):
-    if api_type == "blockstream":
-        url = f"{BLOCKSTREAM_API_URL}{address}/txs"
-        return fetch_from_api(url)
-    elif api_type == "blockchain":
-        url = f"{BLOCKCHAIN_API_URL}{address}"
-        data = fetch_from_api(url)
-        if data:
-            return data.get('txs', [])
-    elif api_type == "blockcypher":
-        url = f"{BLOCKCYPHER_API_URL}{address}/full"
-        return fetch_from_api(url).get('txs', [])
-    return []
+def get_wallet_info(address):
+    for name, url in API_URLS.items():
+        response = requests.get(f"{url}{address}")
+        if response.status_code == 200:
+            return response.json(), name
+    return None, "None"
 
-# Function to get unspent outputs
-def get_unspent_outputs(address, api_type="blockstream"):
-    if api_type == "blockstream":
-        url = f"{BLOCKSTREAM_API_URL}{address}/utxo"
-        return fetch_from_api(url)
-    elif api_type == "blockchain":
-        url = f"{BLOCKCHAIN_API_URL}{address}"
-        data = fetch_from_api(url)
-        if data:
-            return data.get('unspent_outputs', [])
-    elif api_type == "blockcypher":
-        url = f"{BLOCKCYPHER_API_URL}{address}/full"
-        return fetch_from_api(url).get('unspent_outputs', [])
-    return []
+def display_wallet_info(wallet_type, address, info):
+    print(Fore.CYAN + f"\n{wallet_type} Address Info:")
+    print(Fore.GREEN + f"TX History: {info.get('txs', [])}")
+    print(Fore.RED + f"Unspent Transactions: {info.get('unspent', [])}")
 
-# Function to display wallet information
-def display_information(mnemonic_words, address, private_key, public_key, balance, key, wallet, transactions, unspent_outputs):
-    os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen
+def generate_wallet():
+    private_key = generate_private_key()
+    public_key = private_key_to_public_key(private_key)
+    mnemonic_phrase = private_key_to_mnemonic(private_key)
+    legacy_address, segwit_address = public_key_to_addresses(public_key)
 
-    # Display title with pyfiglet
-    ascii_title = pyfiglet.figlet_format("BTC Crumble Gen")
-    print(Fore.GREEN + ascii_title)
-    print(Fore.YELLOW + "Made by github.com/Cr0mb/\n")
-    
-    print(Fore.CYAN + "Welcome to the Bitcoin Address Generator")
-    print(Fore.CYAN + "Generating Bitcoin wallet...\n")
-    
-    print(Fore.CYAN + "\n" + "-"*40)
-    print(Fore.GREEN + "   --- Generated Information ---")
-    print(Fore.CYAN + "-"*40)
-    print(Fore.GREEN + f"Mnemonic: {mnemonic_words}")
-    print(Fore.YELLOW + f"Bitcoin Address: {address}")
-    print(Fore.MAGENTA + f"Balance: {balance} BTC")
-    print(Fore.RED + f"Private Key (WIF): {private_key}")
-    print(Fore.BLUE + f"Public Key: {public_key}")
-    try:
-        print(f"Derivation Path: {key.path}")
-    except Exception as e:
-        print(f"Error fetching derivation path: {e}")
-    print(Fore.CYAN + "\n" + "-"*40)
-    print(Fore.CYAN + "   --- Transaction History ---")
-    print(Fore.CYAN + "-"*40)
-    if transactions:
-        for tx in transactions:
-            print(f"TX Hash: {tx.get('txid', 'N/A')}, Received: {tx.get('value', 'N/A') / 1e8} BTC")
-    else:
-        print("No transactions found.")
-    print(Fore.CYAN + "\n" + "-"*40)
-    print(Fore.CYAN + "   --- Unspent Outputs (UTXOs) ---")
-    print(Fore.CYAN + "-"*40)
-    print(f"Unspent Transactions: {len(unspent_outputs)}")
-    print(Fore.CYAN + "\n" + "-"*40)
-    print(Fore.CYAN + "   --- Additional Wallet Info ---")
-    print(Fore.CYAN + "-"*40)
-    print(f"Wallet Name: {wallet.name}")
-    print(f"Network: {wallet.network}")
+    print(Fore.CYAN + "Mnemonic Phrase: ", Style.BRIGHT + mnemonic_phrase)
+    print(Fore.GREEN + "Private Key (Hex): ", Style.BRIGHT + private_key.hex())
+    print(Fore.YELLOW + "Public Key (Hex): ", Style.BRIGHT + public_key.hex())
+    print(Fore.MAGENTA + "Legacy Address (P2PKH): ", Style.BRIGHT + legacy_address.decode('utf-8'))
+    print(Fore.MAGENTA + "SegWit Address (P2WPKH/P2SH): ", Style.BRIGHT + segwit_address)
 
-# Function to generate wallets continuously
-def generate_wallets(rate_limit_delay=1):
-    apis = ["blockstream", "blockchain", "blockcypher"]
-    
+    for address, addr_type in [(legacy_address.decode('utf-8'), "Legacy"), (segwit_address, "SegWit")]:
+        info, api_name = get_wallet_info(address)
+        if info:
+            display_wallet_info(f"{addr_type} Address Info from {api_name.capitalize()} API", address, info)
+        else:
+            print(Fore.RED + f"\nError fetching {addr_type} Address info from all APIs, blacklisted.")
+            print(Fore.YELLOW + "\nWaiting for 20 minutes before trying again...")
+            time.sleep(1200)
+def run_continuously():
     while True:
-        word_count = random.choice([12, 24])  # Randomly choose 12 or 24-word mnemonic
-        mnemonic_words = generate_mnemonic(word_count)
-        print(Fore.GREEN + f"\nGenerating wallet with {word_count}-word mnemonic...\n")
+        clear_screen()
+        generate_wallet()
+        print(Fore.YELLOW + "\nWaiting 1 second before generating the next wallet...\n")
+        time.sleep(1)
 
-        address, private_key, public_key, key, wallet = generate_bitcoin_address(mnemonic_words)
-
-        # Try fetching data from APIs
-        for api_type in apis:
-            print(Fore.CYAN + f"\nFetching data from {api_type.capitalize()} API...\n")
-            time.sleep(1)
-            balance = get_bitcoin_balance(address, api_type)
-            transactions = get_transaction_history(address, api_type)
-            unspent_outputs = get_unspent_outputs(address, api_type)
-
-            if balance is not None and transactions is not None and unspent_outputs is not None:
-                display_information(mnemonic_words, address, private_key, public_key, balance, key, wallet, transactions, unspent_outputs)
-                break  # If data is successfully fetched, stop trying other APIs
-            else:
-                print(Fore.RED + f"Rate limit hit or failed to fetch data from {api_type.capitalize()}, switching to another API...\n")
-                time.sleep(rate_limit_delay)  # Wait before switching to another API
-
-        # Wait for the specified delay before generating another address
-        time.sleep(rate_limit_delay)
-
-def main():
-    # Start generating wallets continuously
-    generate_wallets()
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 if __name__ == "__main__":
-    main()
+    run_continuously()

@@ -1,5 +1,17 @@
 ![image](https://github.com/user-attachments/assets/83fbf13e-6b4d-4248-a83d-6ffbc68847aa)
 
+## Updates
+
+| Issue | Solution |
+|--------|------------|
+| **Multiple API calls even after success** | Stop checking APIs after the first successful response. |
+| **Potential JSON corruption in `wallets.json`** | Use a temporary file for atomic writes. |
+| **Incorrect SegWit address generation** | Corrected Bech32 encoding of hashed public key. |
+| **Improper Mnemonic derivation** | Used proper entropy source for BIP-39 compliance. |
+| **Unsafe script termination** | Handle `KeyboardInterrupt` to exit cleanly. |
+| **Long API failure wait (20 min delay)** | Removed `time.sleep(1200)` and continued execution. |
+| **Lack of logging/debugging tools** | Added logging to track wallet generation and issues. |
+
 
 # Bitcoin Generator & Balance Checker
 

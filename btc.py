@@ -119,7 +119,8 @@ def run_continuously():
             clear_screen()
             generate_wallet()
             log_event("Waiting 1 second before generating the next wallet...")
-            time.sleep(1)
+            # enable time if you have too much rate limiting
+            # time.sleep(1)
     except KeyboardInterrupt:
         log_event("Process interrupted. Exiting gracefully...")
 
